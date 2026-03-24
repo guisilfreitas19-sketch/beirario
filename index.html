@@ -24,6 +24,7 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
+        // ⚠️ COLOQUE SEU E-MAIL AQUI
         const EMAIL_ADMIN = "SEU_EMAIL_AQUI@gmail.com"; 
 
         window.confirmarPresenca = () => {
@@ -38,54 +39,55 @@
 
         window.salvarInfo = async () => {
             const adv = document.getElementById('edit_adv').value;
-            const detalhes = document.getElementById('edit_detalhes').value;
+            const data = document.getElementById('edit_data').value;
+            const hora = document.getElementById('edit_hora').value;
+            const local = document.getElementById('edit_local').value;
             const aviso = document.getElementById('edit_aviso').value;
+
             await setDoc(doc(db, "configuracao", "proximo_jogo"), {
-                adversario: adv, detalhes: detalhes, mural: aviso
+                adversario: adv, data: data, hora: hora, local: local, mural: aviso
             });
             alert("Site atualizado!");
         };
 
         window.zerarLista = async () => {
-            if (confirm("Zerar lista?")) {
+            if (confirm("Deseja zerar a lista de confirmados?")) {
                 const snapshot = await getDocs(collection(db, "presenca_jogo"));
                 for (const d of snapshot.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
                 alert("Lista limpa!");
             }
         };
 
-        // FUNÇÃO DO CRONÔMETRO
-        function iniciarCronometro(dataTexto) {
-            setInterval(() => {
+        function atualizarCronometro(dataStr, horaStr) {
+            if(!dataStr || !horaStr) return;
+            
+            const timer = setInterval(() => {
                 const agora = new Date().getTime();
-                // Tenta extrair a data do texto (Ex: 29/03/2026 08:30)
-                const partes = dataTexto.split(' ');
-                const dataPartes = partes[0].split('/');
-                const horaPartes = partes[1] ? partes[1].split(':') : ["00", "00"];
-                
-                const dataJogo = new Date(dataPartes[2], dataPartes[1]-1, dataPartes[0], horaPartes[0], horaPartes[1]).getTime();
+                const dataJogo = new Date(`${dataStr}T${horaStr}:00`).getTime();
                 const distancia = dataJogo - agora;
 
                 if (distancia < 0) {
-                    document.getElementById("tempo").innerText = "JOGO EM ANDAMENTO OU FINALIZADO";
+                    document.getElementById("tempo").innerText = "O JOGO COMEÇOU!";
+                    clearInterval(timer);
                     return;
                 }
 
-                const dias = Math.floor(distancia / (1000 * 60 * 60 * 24));
-                const horas = Math.floor((distancia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const minutos = Math.floor((distancia % (1000 * 60 * 60)) / (1000 * 60));
+                const d = Math.floor(distancia / (1000 * 60 * 60 * 24));
+                const h = Math.floor((distancia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((distancia % (1000 * 60 * 60)) / (1000 * 60));
                 
-                document.getElementById("tempo").innerText = `FALTAM: ${dias}d ${horas}h ${minutos}min`;
+                document.getElementById("tempo").innerText = `FALTAM: ${d}d ${h}h ${m}m`;
             }, 1000);
         }
 
         onSnapshot(doc(db, "configuracao", "proximo_jogo"), (doc) => {
             if (doc.exists()) {
-                const data = doc.data();
-                document.getElementById('display_adv').innerText = data.adversario || "A DEFINIR";
-                document.getElementById('display_detalhes').innerText = data.detalhes || "---";
-                document.getElementById('display_mural').innerText = data.mural || "Sem avisos.";
-                if(data.detalhes) iniciarCronometro(data.detalhes);
+                const d = doc.data();
+                document.getElementById('display_adv').innerText = d.adversario || "A DEFINIR";
+                document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "A definir";
+                document.getElementById('display_local').innerText = d.local || "A definir";
+                document.getElementById('display_mural').innerText = d.mural || "Sem avisos.";
+                atualizarCronometro(d.data, d.hora);
             }
         });
 
@@ -110,13 +112,14 @@
     </script>
 
     <style>
-        body { font-family: sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; }
         .card { background: #161b22; border-radius: 12px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; text-align: left; }
         .btn { background: #238636; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 15px; border-radius: 12px; display: none; margin-bottom: 20px; text-align: left; }
-        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        label { font-size: 12px; color: #f1e05a; font-weight: bold; }
+        input { width: 100%; padding: 10px; margin: 5px 0 10px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
         .escudo { width: 100px; margin-bottom: 10px; }
-        .cronometro { color: #f1e05a; font-weight: bold; font-size: 1.1em; margin-top: 10px; display: block; }
+        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 10px; border-top: 1px solid #333; padding-top: 10px; }
         .jogador-item { padding: 8px; border-bottom: 1px solid #333; display: flex; align-items: center; }
     </style>
 </head>
@@ -127,9 +130,11 @@
 
     <div id="painel_admin" class="admin-box">
         <h3 style="color:#f1e05a; margin-top:0;">🛠️ Painel do Presidente</h3>
-        <input type="text" id="edit_adv" placeholder="Adversário">
-        <input type="text" id="edit_detalhes" placeholder="Ex: 29/03/2026 08:30 no Campo">
-        <input type="text" id="edit_aviso" placeholder="Aviso Mural">
+        <label>Adversário:</label> <input type="text" id="edit_adv">
+        <label>Data do Jogo:</label> <input type="date" id="edit_data">
+        <label>Horário:</label> <input type="time" id="edit_hora">
+        <label>Local:</label> <input type="text" id="edit_local">
+        <label>Aviso Mural:</label> <input type="text" id="edit_aviso">
         <div style="display:flex; gap:10px;">
             <button class="btn" style="background:#0077b6; flex:2;" onclick="salvarInfo()">SALVAR</button>
             <button class="btn" style="background:#da3633; flex:1;" onclick="zerarLista()">ZERAR</button>
@@ -139,8 +144,9 @@
     <div class="card" style="border-left: 5px solid #58a6ff;">
         <h3 style="margin:0; color:#58a6ff;">🗓️ PRÓXIMO JOGO:</h3>
         <p style="font-size:1.2em; margin: 10px 0;">Beira Rio vs <b id="display_adv">---</b></p>
-        <p id="display_detalhes">---</p>
-        <span id="tempo" class="cronometro">CONTANDO...</span>
+        <p>📅 <span id="display_data_hora">---</span></p>
+        <p>📍 <span id="display_local">---</span></p>
+        <span id="tempo" class="cronometro">CARREGANDO...</span>
     </div>
 
     <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR MINHA PRESENÇA</button>
@@ -150,4 +156,10 @@
         <div id="lista"></div>
     </div>
 
-    <div class
+    <div class="card" style="border-left: 5px solid #f85149;">
+        <h3 style="margin:0; color:#f85149;">📢 MURAL:</h3>
+        <p id="display_mural" style="font-style:italic; margin-top:10px;">Sem avisos.</p>
+    </div>
+
+</body>
+</html>
