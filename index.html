@@ -44,32 +44,16 @@
                 mural: document.getElementById('edit_aviso').value || "Sem avisos."
             };
             await setDoc(doc(db, "configuracao", "proximo_jogo"), data);
-            alert("Jogo Atualizado!");
+            alert("Informações atualizadas!");
         };
 
-        window.adicionarGol = async () => {
-            const nome = document.getElementById('art_nome').value;
-            const gols = parseInt(document.getElementById('art_gols').value);
-            if(nome) {
-                await setDoc(doc(db, "artilharia", nome), { nome: nome, gols: gols || 0 });
-                alert("Gol Salvo!");
-            }
-        };
-
-        window.zerarTudoParaNovoJogo = async () => {
-            if (confirm("Isso vai limpar a lista e resetar o jogo. Confirmar?")) {
+        window.limparParaNovoJogo = async () => {
+            if (confirm("Isso vai apagar a lista de presença e resetar o jogo. Confirmar?")) {
                 const snap = await getDocs(collection(db, "presenca_jogo"));
                 for (const d of snap.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
                 await setDoc(doc(db, "configuracao", "proximo_jogo"), {
                     adversario: "A DEFINIR", data: "", hora: "", local: "A DEFINIR", mural: "Aguardando novo jogo..."
                 });
-            }
-        };
-
-        window.zerarArtilharia = async () => {
-            if (confirm("Zerar todos os gols?")) {
-                const snap = await getDocs(collection(db, "artilharia"));
-                for (const d of snap.docs) { await deleteDoc(doc(db, "artilharia", d.id)); }
             }
         };
 
@@ -93,34 +77,24 @@
             document.getElementById('total').innerText = snapshot.size;
         });
 
-        onSnapshot(collection(db, "artilharia"), (snapshot) => {
-            const lista = document.getElementById('lista_artilharia');
-            lista.innerHTML = "";
-            let arts = [];
-            snapshot.forEach(d => arts.push(d.data()));
-            arts.sort((a, b) => b.gols - a.gols);
-            arts.forEach((a, i) => {
-                lista.innerHTML += `<div class="item-lista"><b>${i+1}º</b> <span style="flex:1; margin-left:10px;">${a.nome}</span> <b>${a.gols} Gols</b></div>`;
-            });
-        });
-
         onAuthStateChanged(auth, (user) => {
-            if (user && user.email === EMAIL_ADMIN) document.getElementById('painel_admin').style.display = 'block';
+            if (user && user.email === EMAIL_ADMIN) {
+                document.getElementById('painel_admin').style.display = 'block';
+            }
         });
     </script>
 
     <style>
-        body { font-family: sans-serif; background: #0d1117; color: white; padding: 10px; text-align: center; margin: 0; }
-        .card { background: #161b22; border-radius: 10px; padding: 12px; border: 1px solid #30363d; margin-bottom: 10px; text-align: left; }
-        .btn { background: #238636; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-bottom: 5px; }
-        .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 12px; border-radius: 10px; display: none; margin-bottom: 15px; text-align: left; }
-        input { width: 100%; padding: 8px; margin: 4px 0; border-radius: 4px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; font-size: 13px; }
-        .escudo { width: 80px; margin-bottom: 5px; }
-        .item-lista { padding: 6px; border-bottom: 1px solid #333; display: flex; align-items: center; font-size: 14px; }
-        .item-lista img { width: 25px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
-        h1 { font-size: 1.4em; margin: 5px 0; }
-        label { font-size: 10px; color: #f1e05a; font-weight: bold; text-transform: uppercase; }
-        .btn-small { padding: 8px; font-size: 11px; }
+        body { font-family: sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; margin: 0; }
+        .card { background: #161b22; border-radius: 10px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; text-align: left; }
+        .btn { background: #238636; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 15px; border-radius: 10px; display: none; margin-bottom: 20px; text-align: left; }
+        input { width: 100%; padding: 12px; margin: 8px 0; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        .escudo { width: 90px; margin-bottom: 10px; }
+        .item-lista { padding: 10px; border-bottom: 1px solid #333; display: flex; align-items: center; }
+        .item-lista img { width: 30px; border-radius: 50%; margin-right: 12px; border: 1px solid #238636; }
+        label { font-size: 11px; color: #f1e05a; font-weight: bold; text-transform: uppercase; }
+        h1 { margin: 10px 0; }
     </style>
 </head>
 <body>
@@ -129,17 +103,33 @@
     <h1>BEIRA RIO FC</h1>
 
     <div id="painel_admin" class="admin-box">
-        <label>Configurar Próximo Jogo:</label>
-        <input type="text" id="edit_adv" placeholder="Adversário">
-        <div style="display:flex; gap:5px;"><input type="date" id="edit_data"><input type="time" id="edit_hora"></div>
-        <input type="text" id="edit_local" placeholder="Local">
-        <input type="text" id="edit_aviso" placeholder="Mural de Avisos">
-        <button class="btn btn-small" style="background:#0077b6;" onclick="salvarInfo()">SALVAR JOGO</button>
-        
-        <label style="display:block; margin-top:10px;">Artilharia (Nome e Gols):</label>
-        <div style="display:flex; gap:5px;"><input type="text" id="art_nome" placeholder="Nome"><input type="number" id="art_gols" placeholder="Gols"></div>
-        <button class="btn btn-small" style="background:#8957e5;" onclick="adicionarGol()">ATUALIZAR ARTILHEIRO</button>
-        
-        <div style="display:flex; gap:5px; margin-top:10px;">
-            <button class="btn btn-small" style="background:#da3633; flex:1;" onclick="zerarTudoParaNovoJogo()">LIMPAR JOGO</button>
-            <button class="btn btn-small" style
+        <label>⚙️ Painel do Presidente</label>
+        <input type="text" id="edit_adv" placeholder="Próximo Adversário">
+        <div style="display:flex; gap:10px;"><input type="date" id="edit_data"><input type="time" id="edit_hora"></div>
+        <input type="text" id="edit_local" placeholder="Local do Jogo">
+        <input type="text" id="edit_aviso" placeholder="Aviso no Mural">
+        <button class="btn" style="background:#0077b6;" onclick="salvarInfo()">ATUALIZAR JOGO</button>
+        <button class="btn" style="background:#da3633; margin-top: 5px;" onclick="limparParaNovoJogo()">LIMPAR TUDO PARA NOVO JOGO</button>
+    </div>
+
+    <div class="card" style="border-left: 5px solid #58a6ff;">
+        <h3 style="margin:0; color:#58a6ff;">🗓️ PRÓXIMO JOGO</h3>
+        <p style="font-size: 1.2em; margin: 10px 0;">Beira Rio vs <b id="display_adv">---</b></p>
+        <p>📅 <span id="display_data_hora">---</span></p>
+        <p>📍 <span id="display_local">---</span></p>
+    </div>
+
+    <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR MINHA PRESENÇA</button>
+
+    <div class="card">
+        <h3 style="margin-top:0;">📋 CONFIRMADOS: <span id="total" style="color:#238636;">0</span></h3>
+        <div id="lista"></div>
+    </div>
+
+    <div class="card" style="border-left: 5px solid #f85149;">
+        <h3 style="margin:0; color:#f85149;">📢 MURAL</h3>
+        <p id="display_mural" style="font-style:italic; margin-top:10px;">Sem avisos.</p>
+    </div>
+
+</body>
+</html>
