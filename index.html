@@ -8,7 +8,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyBDBTZZMnq4xnrhqePqDWxAsg2aJfbFMaE",
@@ -45,7 +45,7 @@
             await setDoc(doc(db, "configuracao", "proximo_jogo"), {
                 adversario: adv, data: data, hora: hora, local: local, mural: aviso
             });
-            alert("Site atualizado!");
+            alert("Jogo atualizado!");
         };
 
         window.adicionarGol = async () => {
@@ -65,21 +65,21 @@
         };
 
         window.zerarArtilharia = async () => {
-            if (confirm("Deseja zerar toda a artilharia?")) {
+            if (confirm("Zerar artilharia?")) {
                 const snap = await getDocs(collection(db, "artilharia"));
                 for (const d of snap.docs) { await deleteDoc(doc(db, "artilharia", d.id)); }
-                alert("Artilharia zerada!");
+                alert("Zerado!");
             }
         };
 
-        function atualizarCronometro(dataStr, horaStr) {
+        function iniciarCronometro(dataStr, horaStr) {
             if(!dataStr || !horaStr) return;
             setInterval(() => {
                 const agora = new Date().getTime();
                 const dataJogo = new Date(`${dataStr}T${horaStr}:00`).getTime();
                 const dist = dataJogo - agora;
                 const el = document.getElementById("tempo");
-                if (dist < 0) { el.innerText = "JOGO EM ANDAMENTO!"; return; }
+                if (dist < 0) { el.innerText = "BOLA ROLANDO!"; return; }
                 const d = Math.floor(dist / (1000 * 60 * 60 * 24));
                 const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
@@ -91,10 +91,10 @@
             if (doc.exists()) {
                 const d = doc.data();
                 document.getElementById('display_adv').innerText = d.adversario || "A DEFINIR";
-                document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "A definir";
+                document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "---";
                 document.getElementById('display_local').innerText = d.local || "---";
                 document.getElementById('display_mural').innerText = d.mural || "Sem avisos.";
-                atualizarCronometro(d.data, d.hora);
+                iniciarCronometro(d.data, d.hora);
             }
         });
 
@@ -111,10 +111,10 @@
         onSnapshot(collection(db, "artilharia"), (snapshot) => {
             const lista = document.getElementById('lista_artilharia');
             lista.innerHTML = "";
-            let artilheiros = [];
-            snapshot.forEach(d => artilheiros.push(d.data()));
-            artilheiros.sort((a, b) => b.gols - a.gols);
-            artilheiros.forEach((a, i) => {
+            let arts = [];
+            snapshot.forEach(d => arts.push(d.data()));
+            arts.sort((a, b) => b.gols - a.gols);
+            arts.forEach((a, i) => {
                 lista.innerHTML += `<div class="item-lista"><b>${i+1}º</b> <span style="flex:1; margin-left:10px;">${a.nome}</span> <b>${a.gols} Gols</b></div>`;
             });
         });
@@ -125,39 +125,66 @@
     </script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; }
-        .card { background: #161b22; border-radius: 12px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; text-align: left; }
-        .btn { background: #238636; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 15px; border-radius: 12px; display: none; margin-bottom: 20px; text-align: left; }
-        input { width: 100%; padding: 8px; margin: 5px 0 10px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
-        .escudo { width: 100px; margin-bottom: 10px; }
-        .item-lista { padding: 8px; border-bottom: 1px solid #333; display: flex; align-items: center; }
-        .item-lista img { width: 30px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
-        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 10px; text-align: center; border-top: 1px solid #333; padding-top: 10px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; padding: 10px; text-align: center; margin:0; }
+        .card { background: #161b22; border-radius: 10px; padding: 12px; border: 1px solid #30363d; margin-bottom: 10px; text-align: left; }
+        .btn { background: #238636; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
+        .admin-box { background: #1c2128; border: 1px solid #f1e05a; padding: 12px; border-radius: 10px; display: none; margin-bottom: 15px; text-align: left; }
+        input { width: 100%; padding: 8px; margin: 4px 0 8px 0; border-radius: 4px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; font-size: 14px; }
+        .escudo { width: 80px; margin: 5px 0; }
+        .item-lista { padding: 6px; border-bottom: 1px solid #333; display: flex; align-items: center; font-size: 14px; }
+        .item-lista img { width: 25px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
+        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 8px; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 14px; }
+        h1 { font-size: 1.5em; margin: 5px 0; }
+        label { font-size: 11px; color: #f1e05a; text-transform: uppercase; }
     </style>
 </head>
 <body>
 
     <img src="escudo.png" class="escudo">
-    <h1 style="margin:0 0 15px 0;">BEIRA RIO FC</h1>
+    <h1>BEIRA RIO FC</h1>
 
     <div id="painel_admin" class="admin-box">
-        <h3 style="color:#f1e05a; margin-top:0;">🛠️ Painel do Presidente</h3>
+        <label>Jogo:</label>
         <input type="text" id="edit_adv" placeholder="Adversário">
         <div style="display:flex; gap:5px;"><input type="date" id="edit_data"><input type="time" id="edit_hora"></div>
         <input type="text" id="edit_local" placeholder="Local">
         <input type="text" id="edit_aviso" placeholder="Aviso Mural">
-        <button class="btn" style="background:#0077b6; margin-bottom:15px;" onclick="salvarInfo()">SALVAR JOGO</button>
+        <button class="btn" style="background:#0077b6; padding: 8px;" onclick="salvarInfo()">SALVAR JOGO</button>
         
-        <label>Artilharia:</label>
+        <label style="display:block; margin-top:10px;">Gols:</label>
         <div style="display:flex; gap:5px;"><input type="text" id="art_nome" placeholder="Nome"><input type="number" id="art_gols" placeholder="Gols"></div>
-        <button class="btn" style="background:#8957e5;" onclick="adicionarGol()">ADICIONAR/ATUALIZAR GOL</button>
+        <button class="btn" style="background:#8957e5; padding: 8px;" onclick="adicionarGol()">REGISTRAR GOL</button>
         
-        <div style="display:flex; gap:10px; margin-top:15px;">
-            <button class="btn" style="background:#da3633;" onclick="zerarLista()">ZERAR LISTA</button>
-            <button class="btn" style="background:#da3633;" onclick="zerarArtilharia()">ZERAR GOLS</button>
+        <div style="display:flex; gap:5px; margin-top:10px;">
+            <button class="btn" style="background:#da3633; padding: 8px; font-size:10px;" onclick="zerarLista()">ZERAR LISTA</button>
+            <button class="btn" style="background:#da3633; padding: 8px; font-size:10px;" onclick="zerarArtilharia()">ZERAR GOLS</button>
         </div>
     </div>
 
-    <div class="card" style="border-left: 5px solid #58a6ff;">
-        <h3 style="margin:0; color:#58a6ff;">
+    <div class="card" style="border-left: 4px solid #58a6ff;">
+        <h3 style="margin:0; color:#58a6ff; font-size: 14px;">🗓️ PRÓXIMO JOGO</h3>
+        <p style="margin: 8px 0; font-weight: bold;">Beira Rio vs <span id="display_adv">...</span></p>
+        <p style="font-size: 13px; margin: 4px 0;">📅 <span id="display_data_hora">---</span></p>
+        <p style="font-size: 13px; margin: 4px 0;">📍 <span id="display_local">---</span></p>
+        <span id="tempo" class="cronometro">CARREGANDO...</span>
+    </div>
+
+    <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR MINHA PRESENÇA</button>
+
+    <div class="card">
+        <h3 style="margin:0 0 10px 0; color:#f1e05a; font-size: 14px;">🏆 ARTILHARIA</h3>
+        <div id="lista_artilharia"></div>
+    </div>
+
+    <div class="card">
+        <h3 style="margin:0 0 10px 0; font-size: 14px;">📋 CONFIRMADOS: <span id="total" style="color:#238636;">0</span></h3>
+        <div id="lista"></div>
+    </div>
+
+    <div class="card" style="border-left: 4px solid #f85149;">
+        <h3 style="margin:0; color:#f85149; font-size: 14px;">📢 MURAL</h3>
+        <p id="display_mural" style="font-style:italic; margin-top:8px; font-size: 13px;">Sem avisos.</p>
+    </div>
+
+</body>
+</html>
