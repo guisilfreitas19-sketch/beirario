@@ -8,7 +8,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyBDBTZZMnq4xnrhqePqDWxAsg2aJfbFMaE",
@@ -31,78 +31,45 @@
                 await setDoc(doc(db, "presenca_jogo", result.user.uid), {
                     nome: result.user.displayName,
                     foto: result.user.photoURL
-                });
-                alert("Presença confirmada!");
+                }).catch(e => console.error("Erro ao confirmar:", e));
             });
         };
 
         window.salvarInfo = async () => {
-            const adv = document.getElementById('edit_adv').value;
-            const data = document.getElementById('edit_data').value;
-            const hora = document.getElementById('edit_hora').value;
-            const local = document.getElementById('edit_local').value;
-            const aviso = document.getElementById('edit_aviso').value;
-            await setDoc(doc(db, "configuracao", "proximo_jogo"), {
-                adversario: adv, data: data, hora: hora, local: local, mural: aviso
-            });
-            alert("Informações do jogo salvas!");
+            const data = {
+                adversario: document.getElementById('edit_adv').value || "A DEFINIR",
+                data: document.getElementById('edit_data').value || "",
+                hora: document.getElementById('edit_hora').value || "",
+                local: document.getElementById('edit_local').value || "A DEFINIR",
+                mural: document.getElementById('edit_aviso').value || "Sem avisos."
+            };
+            await setDoc(doc(db, "configuracao", "proximo_jogo"), data);
+            alert("Salvo!");
         };
 
         window.adicionarGol = async () => {
             const nome = document.getElementById('art_nome').value;
             const gols = parseInt(document.getElementById('art_gols').value);
-            if(!nome || isNaN(gols)) return alert("Preencha nome e gols!");
-            await setDoc(doc(db, "artilharia", nome), { nome: nome, gols: gols });
-            alert("Gol registrado!");
+            if(nome) await setDoc(doc(db, "artilharia", nome), { nome: nome, gols: gols || 0 });
         };
 
         window.zerarTudoParaNovoJogo = async () => {
-            if (confirm("ATENÇÃO: Isso vai limpar a lista de confirmados e resetar os dados do jogo atual. Confirmar?")) {
-                // 1. Limpa os Confirmados
+            if (confirm("Limpar lista e resetar jogo?")) {
                 const snap = await getDocs(collection(db, "presenca_jogo"));
                 for (const d of snap.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
-                
-                // 2. Reseta as informações do Jogo
                 await setDoc(doc(db, "configuracao", "proximo_jogo"), {
-                    adversario: "A DEFINIR", data: "", hora: "", local: "A DEFINIR", mural: "Aguardando novo jogo..."
+                    adversario: "A DEFINIR", data: "", hora: "", local: "A DEFINIR", mural: "Aguardando..."
                 });
-                
-                alert("Site limpo para o próximo racha!");
             }
         };
-
-        window.zerarArtilharia = async () => {
-            if (confirm("Deseja zerar a artilharia?")) {
-                const snap = await getDocs(collection(db, "artilharia"));
-                for (const d of snap.docs) { await deleteDoc(doc(db, "artilharia", d.id)); }
-                alert("Gols zerados!");
-            }
-        };
-
-        function iniciarCronometro(dataStr, horaStr) {
-            const el = document.getElementById("tempo");
-            if(!dataStr || !horaStr) { el.innerText = "AGUARDANDO DATA..."; return; }
-            
-            setInterval(() => {
-                const agora = new Date().getTime();
-                const dataJogo = new Date(`${dataStr}T${horaStr}:00`).getTime();
-                const dist = dataJogo - agora;
-                if (dist < 0) { el.innerText = "JOGO EM ANDAMENTO!"; return; }
-                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
-                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
-                el.innerText = `FALTAM: ${d}d ${h}h ${m}m`;
-            }, 1000);
-        }
 
         onSnapshot(doc(db, "configuracao", "proximo_jogo"), (doc) => {
             if (doc.exists()) {
                 const d = doc.data();
-                document.getElementById('display_adv').innerText = d.adversario;
+                document.getElementById('display_adv').innerText = d.adversario || "A DEFINIR";
                 document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "A definir";
-                document.getElementById('display_local').innerText = d.local;
-                document.getElementById('display_mural').innerText = d.mural;
-                iniciarCronometro(d.data, d.hora);
+                document.getElementById('display_local').innerText = d.local || "A definir";
+                document.getElementById('display_mural').innerText = d.mural || "---";
             }
         });
 
@@ -133,19 +100,51 @@
     </script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; padding: 10px; text-align: center; margin:0; }
-        .card { background: #161b22; border-radius: 10px; padding: 12px; border: 1px solid #30363d; margin-bottom: 10px; text-align: left; }
-        .btn { background: #238636; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
-        .admin-box { background: #1c2128; border: 1px solid #f1e05a; padding: 12px; border-radius: 10px; display: none; margin-bottom: 15px; text-align: left; }
-        input { width: 100%; padding: 8px; margin: 4px 0 8px 0; border-radius: 4px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
-        .escudo { width: 80px; margin: 5px 0; }
-        .item-lista { padding: 6px; border-bottom: 1px solid #333; display: flex; align-items: center; }
-        .item-lista img { width: 25px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
-        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 8px; text-align: center; border-top: 1px solid #333; padding-top: 8px; }
-        label { font-size: 11px; color: #f1e05a; text-transform: uppercase; font-weight: bold; }
+        body { font-family: sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; margin: 0; }
+        .card { background: #161b22; border-radius: 10px; padding: 15px; border: 1px solid #30363d; margin-bottom: 10px; text-align: left; }
+        .btn { background: #238636; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; margin-bottom: 10px; }
+        .admin-box { background: #1c2128; border: 1px solid #f1e05a; padding: 15px; border-radius: 10px; display: none; margin-bottom: 20px; text-align: left; }
+        input { width: 100%; padding: 10px; margin: 5px 0; border-radius: 4px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        .escudo { width: 100px; margin-bottom: 10px; }
+        .item-lista { padding: 8px; border-bottom: 1px solid #333; display: flex; align-items: center; }
+        .item-lista img { width: 30px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
     </style>
 </head>
 <body>
 
     <img src="escudo.png" class="escudo">
-    <h1>BEIRA RIO
+    <h1>BEIRA RIO FC</h1>
+
+    <div id="painel_admin" class="admin-box">
+        <label>Configurar Jogo:</label>
+        <input type="text" id="edit_adv" placeholder="Adversário">
+        <input type="date" id="edit_data">
+        <input type="time" id="edit_hora">
+        <input type="text" id="edit_local" placeholder="Local">
+        <input type="text" id="edit_aviso" placeholder="Mural">
+        <button class="btn" style="background:#0077b6;" onclick="salvarInfo()">SALVAR JOGO</button>
+        <hr>
+        <button class="btn" style="background:#da3633;" onclick="zerarTudoParaNovoJogo()">LIMPAR LISTA E JOGO</button>
+    </div>
+
+    <div class="card" style="border-left: 5px solid #58a6ff;">
+        <h3 style="margin:0; color:#58a6ff;">PRÓXIMO JOGO</h3>
+        <p>Beira Rio vs <b id="display_adv">---</b></p>
+        <p>📅 <span id="display_data_hora">---</span></p>
+        <p>📍 <span id="display_local">---</span></p>
+    </div>
+
+    <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR PRESENÇA</button>
+
+    <div class="card">
+        <h3>🏆 ARTILHARIA</h3>
+        <div id="lista_artilharia"></div>
+    </div>
+
+    <div class="card">
+        <h3>📋 CONFIRMADOS: <span id="total">0</span></h3>
+        <div id="lista"></div>
+    </div>
+
+</body>
+</html>
