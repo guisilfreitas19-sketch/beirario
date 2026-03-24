@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Beira Rio FC - Presença</title>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+        // CONFIGURAÇÃO DO SEU PROJETO BEIRA RIO FC
+        const firebaseConfig = {
+          apiKey: "AIzaSyBDBTZZMnq4xnrhqePqDWxAsg2aJfbFMaE",
+          authDomain: "beira-rio-fc-e27b0.firebaseapp.com",
+          projectId: "beira-rio-fc-e27b0",
+          storageBucket: "beira-rio-fc-e27b0.firebasestorage.app",
+          messagingSenderId: "113098706363",
+          appId: "1:113098706363:web:5122247d7af8caa52b889e"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+
+        // FUNÇÃO PARA CONFIRMAR PRESENÇA
+        window.confirmarPresenca = () => {
+            signInWithPopup(auth, provider).then(async (result) => {
+                const user = result.user;
+                // Salva o nome e a foto do jogador na nuvem
+                await setDoc(doc(db, "presenca_jogo", user.uid), {
+                    nome: user.displayName,
+                    foto: user.photoURL,
+                    data: new Date().toLocaleString('pt-BR')
+                });
+                alert("Confirmado! Bom jogo, " + user.displayName + "!");
+            }).catch((error) => {
+                console.error(error);
+                alert("Erro ao confirmar. Tente novamente!");
+            });
+        };
+
+        // ATUALIZA A LISTA AUTOMATICAMENTE PARA TODO MUNDO
+        onSnapshot(collection(db, "presenca_jogo"), (snapshot) => {
+            const lista = document.getElementById('lista');
+            const total = document.getElementById('total');
+            lista.innerHTML = "";
+            let contador = 0;
+            
+            snapshot.forEach((doc) => {
+                const jogador = doc.data();
+                lista.innerHTML += `
+                    <div class="jogador">
+                        <img src="${jogador.foto}" alt="foto" onerror="this.src='https://cdn-icons-png.flaticon.com/512/166/166165.png'">
+                        <span>${jogador.nome}</span>
+                        <span class="status">VOU</span>
+                    </div>`;
+                contador++;
+            });
+            total.innerText = contador;
+        });
+    </script>
+
+    <style>
+        :root { --cor-fundo: #0d1117; --cor-card: #161b22; --cor-principal: #0077b6; --cor-texto: #ffffff; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--cor-fundo); color: var(--cor-texto); margin: 0; padding: 20px; display: flex; justify-content: center; }
+        .app-container { width: 100%; max-width: 400px; }
+        .cabecalho { text-align: center; padding: 20px; background: var(--cor-principal); border-radius: 15px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        .cabecalho h1 { margin: 0; font-size: 22px; }
+        .btn-confirmar { background-color: #28a745; color: white; border: none; width: 100%; padding: 18px; border-radius: 10px; font-weight: bold; font-size: 16px; cursor: pointer; transition: 0.3s; margin-bottom: 20px; }
+        .btn-confirmar:active { transform: scale(0.98); background-color: #218838; }
+        .lista-card { background-color: var(--cor-card); border-radius: 15px; padding: 15px; border: 1px solid #30363d; }
+        .lista-card h2 { font-size: 18px; margin-top: 0; border-bottom: 1px solid #30363d; padding-bottom: 10px; display: flex; justify-content: space-between; }
+        .jogador { display: flex; align-items: center; padding: 10px 0; border-bottom: 1px solid #21262d; }
+        .jogador img { width: 35px; height: 35px; border-radius: 50%; margin-right: 12px; border: 2px solid var(--cor-principal); }
+        .jogador span { flex-grow: 1; font-size: 15px; }
+        .status { background: #238636; font-size: 10px; padding: 3px 8px; border-radius: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="cabecalho">
+        <h1>BEIRA RIO F.C.</h1>
+        <small>Lista de Presença - Próximo Jogo</small>
+    </div>
+
+    <button class="btn-confirmar" onclick="confirmarPresenca()">⚽ CONFIRMAR MINHA PRESENÇA</button>
+
+    <div class="lista-card">
+        <h2>Convocados <span id="total" style="color: #28a745;">0</span></h2>
+        <div id="lista">
+            </div>
+    </div>
+</div>
+
+</body>
+</html>
