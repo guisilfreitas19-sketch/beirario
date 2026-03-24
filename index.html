@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Beira Rio FC - Oficial</title>
+    <title>Beira Rio FC - Gestão</title>
     
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
@@ -24,17 +24,16 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // ⚠️ COLOQUE SEU E-MAIL DE ADMIN AQUI ENTRE AS ASPAS
+        // ⚠️ COLOQUE SEU E-MAIL AQUI
         const EMAIL_ADMIN = "SEU_EMAIL_AQUI@gmail.com"; 
 
         window.confirmarPresenca = () => {
             signInWithPopup(auth, provider).then(async (result) => {
                 await setDoc(doc(db, "presenca_jogo", result.user.uid), {
                     nome: result.user.displayName,
-                    foto: result.user.photoURL,
-                    data: new Date().toLocaleString('pt-BR')
+                    foto: result.user.photoURL
                 });
-                alert("Presença confirmada, guerreiro!");
+                alert("Presença confirmada!");
             });
         };
 
@@ -45,25 +44,23 @@
             await setDoc(doc(db, "configuracao", "proximo_jogo"), {
                 adversario: adv, detalhes: detalhes, mural: aviso
             });
-            alert("Informações do jogo atualizadas!");
+            alert("Site atualizado!");
         };
 
         window.zerarLista = async () => {
-            if (confirm("Deseja zerar a lista para o próximo jogo? Isso apagará todos os nomes!")) {
-                const querySnapshot = await getDocs(collection(db, "presenca_jogo"));
-                for (const documento of querySnapshot.docs) {
-                    await deleteDoc(doc(db, "presenca_jogo", documento.id));
-                }
-                alert("Lista zerada com sucesso!");
+            if (confirm("Zerar lista?")) {
+                const snapshot = await getDocs(collection(db, "presenca_jogo"));
+                for (const d of snapshot.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
+                alert("Zerado!");
             }
         };
 
         onSnapshot(doc(db, "configuracao", "proximo_jogo"), (doc) => {
             if (doc.exists()) {
                 const data = doc.data();
-                document.getElementById('display_adv').innerText = data.adversario || "A definir";
-                document.getElementById('display_detalhes').innerText = data.detalhes || "A definir";
-                document.getElementById('display_mural').innerText = data.mural || "Sem avisos.";
+                document.getElementById('display_adv').innerText = data.adversario || "A DEFINIR";
+                document.getElementById('display_detalhes').innerText = data.detalhes || "A DEFINIR";
+                document.getElementById('display_mural').innerText = data.mural || "SEM AVISOS";
             }
         });
 
@@ -72,8 +69,8 @@
             lista.innerHTML = "";
             snapshot.forEach((doc) => {
                 const j = doc.data();
-                lista.innerHTML += `<div class="jogador-item">
-                    <img src="${j.foto}" style="width:35px; border-radius:50%; margin-right:12px; border:2px solid #238636;">
+                lista.innerHTML += `<div style="padding:10px; border-bottom:1px solid #333; display:flex; align-items:center;">
+                    <img src="${j.foto}" style="width:30px; border-radius:50%; margin-right:10px;">
                     <span>${j.nome}</span>
                 </div>`;
             });
@@ -88,20 +85,47 @@
     </script>
 
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; padding: 15px; margin: 0; }
-        .escudo { display: block; margin: 10px auto; width: 120px; height: 120px; object-fit: contain; }
-        .card { background: #161b22; border-radius: 12px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; }
-        .btn { background: #238636; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 16px; transition: 0.2s; }
-        .btn:active { transform: scale(0.98); }
-        .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 15px; border-radius: 12px; display: none; margin-bottom: 20px; }
-        input { width: 100%; padding: 12px; margin: 5px 0 15px 0; border-radius: 8px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
-        label { font-weight: bold; color: #f1e05a; font-size: 14px; }
-        .jogador-item { padding: 12px; border-bottom: 1px solid #30363d; display: flex; align-items: center; background: #0d1117; margin-bottom: 5px; border-radius: 8px; }
+        body { font-family: sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; }
+        .card { background: #161b22; border-radius: 12px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; text-align: left; }
+        .btn { background: #238636; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 15px; border-radius: 12px; display: none; margin-bottom: 20px; text-align: left; }
+        input { width: 100%; padding: 10px; margin: 5px 0 15px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        .escudo { width: 100px; margin-bottom: 10px; }
     </style>
 </head>
 <body>
 
-    <img class="escudo" src="escudo.png" alt="Escudo Beira Rio FC">
-    <h2 style="text-align:center; color:white; margin: 0 0 20px 0;">BEIRA RIO FC</h2>
+    <img src="escudo.png" class="escudo">
+    <h1>BEIRA RIO FC</h1>
 
-    <div id="painel_admin" class="admin-box
+    <div id="painel_admin" class="admin-box">
+        <h3 style="color:#f1e05a;">🛠️ Painel do Presidente</h3>
+        <input type="text" id="edit_adv" placeholder="Adversário">
+        <input type="text" id="edit_detalhes" placeholder="Data/Hora/Local">
+        <input type="text" id="edit_aviso" placeholder="Aviso Mural">
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:#0077b6;" onclick="salvarInfo()">SALVAR</button>
+            <button class="btn" style="background:#da3633;" onclick="zerarLista()">ZERAR</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>🗓️ PRÓXIMO JOGO:</h3>
+        <p>Beira Rio vs <b id="display_adv">CLIQUE ABAIXO PARA CONFIGURAR</b></p>
+        <p id="display_detalhes">---</p>
+    </div>
+
+    <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR PRESENÇA / LOGIN</button>
+
+    <div class="card">
+        <h3>📋 Convocados: <span id="total">0</span></h3>
+        <div id="lista"></div>
+    </div>
+
+    <div class="card">
+        <h3>📢 MURAL:</h3>
+        <p id="display_mural">Aguardando avisos...</p>
+    </div>
+
+</body>
+</html>
