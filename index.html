@@ -8,7 +8,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyBDBTZZMnq4xnrhqePqDWxAsg2aJfbFMaE",
@@ -24,7 +24,6 @@
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
 
-        // ⚠️ COLOQUE SEU E-MAIL AQUI
         const EMAIL_ADMIN = "guisilfreitas19@gmail.com"; 
 
         window.confirmarPresenca = () => {
@@ -43,40 +42,48 @@
             const hora = document.getElementById('edit_hora').value;
             const local = document.getElementById('edit_local').value;
             const aviso = document.getElementById('edit_aviso').value;
-
             await setDoc(doc(db, "configuracao", "proximo_jogo"), {
                 adversario: adv, data: data, hora: hora, local: local, mural: aviso
             });
             alert("Site atualizado!");
         };
 
+        window.adicionarGol = async () => {
+            const nome = document.getElementById('art_nome').value;
+            const gols = parseInt(document.getElementById('art_gols').value);
+            if(!nome || isNaN(gols)) return alert("Preencha nome e gols!");
+            await setDoc(doc(db, "artilharia", nome), { nome: nome, gols: gols });
+            alert("Gol registrado!");
+        };
+
         window.zerarLista = async () => {
-            if (confirm("Deseja zerar a lista de confirmados?")) {
-                const snapshot = await getDocs(collection(db, "presenca_jogo"));
-                for (const d of snapshot.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
+            if (confirm("Zerar lista de confirmados?")) {
+                const snap = await getDocs(collection(db, "presenca_jogo"));
+                for (const d of snap.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
                 alert("Lista limpa!");
+            }
+        };
+
+        window.zerarArtilharia = async () => {
+            if (confirm("Deseja zerar toda a artilharia?")) {
+                const snap = await getDocs(collection(db, "artilharia"));
+                for (const d of snap.docs) { await deleteDoc(doc(db, "artilharia", d.id)); }
+                alert("Artilharia zerada!");
             }
         };
 
         function atualizarCronometro(dataStr, horaStr) {
             if(!dataStr || !horaStr) return;
-            
-            const timer = setInterval(() => {
+            setInterval(() => {
                 const agora = new Date().getTime();
                 const dataJogo = new Date(`${dataStr}T${horaStr}:00`).getTime();
-                const distancia = dataJogo - agora;
-
-                if (distancia < 0) {
-                    document.getElementById("tempo").innerText = "O JOGO COMEÇOU!";
-                    clearInterval(timer);
-                    return;
-                }
-
-                const d = Math.floor(distancia / (1000 * 60 * 60 * 24));
-                const h = Math.floor((distancia % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                const m = Math.floor((distancia % (1000 * 60 * 60)) / (1000 * 60));
-                
-                document.getElementById("tempo").innerText = `FALTAM: ${d}d ${h}h ${m}m`;
+                const dist = dataJogo - agora;
+                const el = document.getElementById("tempo");
+                if (dist < 0) { el.innerText = "JOGO EM ANDAMENTO!"; return; }
+                const d = Math.floor(dist / (1000 * 60 * 60 * 24));
+                const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
+                el.innerText = `FALTAM: ${d}d ${h}h ${m}m`;
             }, 1000);
         }
 
@@ -85,7 +92,7 @@
                 const d = doc.data();
                 document.getElementById('display_adv').innerText = d.adversario || "A DEFINIR";
                 document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "A definir";
-                document.getElementById('display_local').innerText = d.local || "A definir";
+                document.getElementById('display_local').innerText = d.local || "---";
                 document.getElementById('display_mural').innerText = d.mural || "Sem avisos.";
                 atualizarCronometro(d.data, d.hora);
             }
@@ -96,70 +103,61 @@
             lista.innerHTML = "";
             snapshot.forEach((doc) => {
                 const j = doc.data();
-                lista.innerHTML += `<div class="jogador-item">
-                    <img src="${j.foto}" style="width:30px; border-radius:50%; margin-right:10px; border:1px solid #238636;">
-                    <span>${j.nome}</span>
-                </div>`;
+                lista.innerHTML += `<div class="item-lista"><img src="${j.foto}"><span>${j.nome}</span></div>`;
             });
             document.getElementById('total').innerText = snapshot.size;
         });
 
+        onSnapshot(collection(db, "artilharia"), (snapshot) => {
+            const lista = document.getElementById('lista_artilharia');
+            lista.innerHTML = "";
+            let artilheiros = [];
+            snapshot.forEach(d => artilheiros.push(d.data()));
+            artilheiros.sort((a, b) => b.gols - a.gols);
+            artilheiros.forEach((a, i) => {
+                lista.innerHTML += `<div class="item-lista"><b>${i+1}º</b> <span style="flex:1; margin-left:10px;">${a.nome}</span> <b>${a.gols} Gols</b></div>`;
+            });
+        });
+
         onAuthStateChanged(auth, (user) => {
-            if (user && user.email === EMAIL_ADMIN) {
-                document.getElementById('painel_admin').style.display = 'block';
-            }
+            if (user && user.email === EMAIL_ADMIN) document.getElementById('painel_admin').style.display = 'block';
         });
     </script>
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; background: #0d1117; color: white; padding: 15px; text-align: center; }
         .card { background: #161b22; border-radius: 12px; padding: 15px; border: 1px solid #30363d; margin-bottom: 15px; text-align: left; }
-        .btn { background: #238636; color: white; border: none; width: 100%; padding: 15px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn { background: #238636; color: white; border: none; width: 100%; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; }
         .admin-box { background: #1c2128; border: 2px solid #f1e05a; padding: 15px; border-radius: 12px; display: none; margin-bottom: 20px; text-align: left; }
-        label { font-size: 12px; color: #f1e05a; font-weight: bold; }
-        input { width: 100%; padding: 10px; margin: 5px 0 10px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
+        input { width: 100%; padding: 8px; margin: 5px 0 10px 0; border-radius: 5px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
         .escudo { width: 100px; margin-bottom: 10px; }
-        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 10px; border-top: 1px solid #333; padding-top: 10px; }
-        .jogador-item { padding: 8px; border-bottom: 1px solid #333; display: flex; align-items: center; }
+        .item-lista { padding: 8px; border-bottom: 1px solid #333; display: flex; align-items: center; }
+        .item-lista img { width: 30px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
+        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 10px; text-align: center; border-top: 1px solid #333; padding-top: 10px; }
     </style>
 </head>
 <body>
 
     <img src="escudo.png" class="escudo">
-    <h1>BEIRA RIO FC</h1>
+    <h1 style="margin:0 0 15px 0;">BEIRA RIO FC</h1>
 
     <div id="painel_admin" class="admin-box">
         <h3 style="color:#f1e05a; margin-top:0;">🛠️ Painel do Presidente</h3>
-        <label>Adversário:</label> <input type="text" id="edit_adv">
-        <label>Data do Jogo:</label> <input type="date" id="edit_data">
-        <label>Horário:</label> <input type="time" id="edit_hora">
-        <label>Local:</label> <input type="text" id="edit_local">
-        <label>Aviso Mural:</label> <input type="text" id="edit_aviso">
-        <div style="display:flex; gap:10px;">
-            <button class="btn" style="background:#0077b6; flex:2;" onclick="salvarInfo()">SALVAR</button>
-            <button class="btn" style="background:#da3633; flex:1;" onclick="zerarLista()">ZERAR</button>
+        <input type="text" id="edit_adv" placeholder="Adversário">
+        <div style="display:flex; gap:5px;"><input type="date" id="edit_data"><input type="time" id="edit_hora"></div>
+        <input type="text" id="edit_local" placeholder="Local">
+        <input type="text" id="edit_aviso" placeholder="Aviso Mural">
+        <button class="btn" style="background:#0077b6; margin-bottom:15px;" onclick="salvarInfo()">SALVAR JOGO</button>
+        
+        <label>Artilharia:</label>
+        <div style="display:flex; gap:5px;"><input type="text" id="art_nome" placeholder="Nome"><input type="number" id="art_gols" placeholder="Gols"></div>
+        <button class="btn" style="background:#8957e5;" onclick="adicionarGol()">ADICIONAR/ATUALIZAR GOL</button>
+        
+        <div style="display:flex; gap:10px; margin-top:15px;">
+            <button class="btn" style="background:#da3633;" onclick="zerarLista()">ZERAR LISTA</button>
+            <button class="btn" style="background:#da3633;" onclick="zerarArtilharia()">ZERAR GOLS</button>
         </div>
     </div>
 
     <div class="card" style="border-left: 5px solid #58a6ff;">
-        <h3 style="margin:0; color:#58a6ff;">🗓️ PRÓXIMO JOGO:</h3>
-        <p style="font-size:1.2em; margin: 10px 0;">Beira Rio vs <b id="display_adv">---</b></p>
-        <p>📅 <span id="display_data_hora">---</span></p>
-        <p>📍 <span id="display_local">---</span></p>
-        <span id="tempo" class="cronometro">CARREGANDO...</span>
-    </div>
-
-    <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR MINHA PRESENÇA</button>
-
-    <div class="card" style="margin-top:20px;">
-        <h3 style="margin-top:0;">📋 Confirmados: <span id="total">0</span></h3>
-        <div id="lista"></div>
-    </div>
-
-    <div class="card" style="border-left: 5px solid #f85149;">
-        <h3 style="margin:0; color:#f85149;">📢 MURAL:</h3>
-        <p id="display_mural" style="font-style:italic; margin-top:10px;">Sem avisos.</p>
-    </div>
-
-</body>
-</html>
+        <h3 style="margin:0; color:#58a6ff;">
