@@ -8,7 +8,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, collection, onSnapshot, getDocs, deleteDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
         const firebaseConfig = {
           apiKey: "AIzaSyBDBTZZMnq4xnrhqePqDWxAsg2aJfbFMaE",
@@ -45,7 +45,7 @@
             await setDoc(doc(db, "configuracao", "proximo_jogo"), {
                 adversario: adv, data: data, hora: hora, local: local, mural: aviso
             });
-            alert("Jogo atualizado!");
+            alert("Informações do jogo salvas!");
         };
 
         window.adicionarGol = async () => {
@@ -56,30 +56,38 @@
             alert("Gol registrado!");
         };
 
-        window.zerarLista = async () => {
-            if (confirm("Zerar lista de confirmados?")) {
+        window.zerarTudoParaNovoJogo = async () => {
+            if (confirm("ATENÇÃO: Isso vai limpar a lista de confirmados e resetar os dados do jogo atual. Confirmar?")) {
+                // 1. Limpa os Confirmados
                 const snap = await getDocs(collection(db, "presenca_jogo"));
                 for (const d of snap.docs) { await deleteDoc(doc(db, "presenca_jogo", d.id)); }
-                alert("Lista limpa!");
+                
+                // 2. Reseta as informações do Jogo
+                await setDoc(doc(db, "configuracao", "proximo_jogo"), {
+                    adversario: "A DEFINIR", data: "", hora: "", local: "A DEFINIR", mural: "Aguardando novo jogo..."
+                });
+                
+                alert("Site limpo para o próximo racha!");
             }
         };
 
         window.zerarArtilharia = async () => {
-            if (confirm("Zerar artilharia?")) {
+            if (confirm("Deseja zerar a artilharia?")) {
                 const snap = await getDocs(collection(db, "artilharia"));
                 for (const d of snap.docs) { await deleteDoc(doc(db, "artilharia", d.id)); }
-                alert("Zerado!");
+                alert("Gols zerados!");
             }
         };
 
         function iniciarCronometro(dataStr, horaStr) {
-            if(!dataStr || !horaStr) return;
+            const el = document.getElementById("tempo");
+            if(!dataStr || !horaStr) { el.innerText = "AGUARDANDO DATA..."; return; }
+            
             setInterval(() => {
                 const agora = new Date().getTime();
                 const dataJogo = new Date(`${dataStr}T${horaStr}:00`).getTime();
                 const dist = dataJogo - agora;
-                const el = document.getElementById("tempo");
-                if (dist < 0) { el.innerText = "BOLA ROLANDO!"; return; }
+                if (dist < 0) { el.innerText = "JOGO EM ANDAMENTO!"; return; }
                 const d = Math.floor(dist / (1000 * 60 * 60 * 24));
                 const h = Math.floor((dist % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
                 const m = Math.floor((dist % (1000 * 60 * 60)) / (1000 * 60));
@@ -90,10 +98,10 @@
         onSnapshot(doc(db, "configuracao", "proximo_jogo"), (doc) => {
             if (doc.exists()) {
                 const d = doc.data();
-                document.getElementById('display_adv').innerText = d.adversario || "A DEFINIR";
-                document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "---";
-                document.getElementById('display_local').innerText = d.local || "---";
-                document.getElementById('display_mural').innerText = d.mural || "Sem avisos.";
+                document.getElementById('display_adv').innerText = d.adversario;
+                document.getElementById('display_data_hora').innerText = d.data ? `${d.data.split('-').reverse().join('/')} às ${d.hora}` : "A definir";
+                document.getElementById('display_local').innerText = d.local;
+                document.getElementById('display_mural').innerText = d.mural;
                 iniciarCronometro(d.data, d.hora);
             }
         });
@@ -129,62 +137,15 @@
         .card { background: #161b22; border-radius: 10px; padding: 12px; border: 1px solid #30363d; margin-bottom: 10px; text-align: left; }
         .btn { background: #238636; color: white; border: none; width: 100%; padding: 12px; border-radius: 6px; font-weight: bold; cursor: pointer; }
         .admin-box { background: #1c2128; border: 1px solid #f1e05a; padding: 12px; border-radius: 10px; display: none; margin-bottom: 15px; text-align: left; }
-        input { width: 100%; padding: 8px; margin: 4px 0 8px 0; border-radius: 4px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; font-size: 14px; }
+        input { width: 100%; padding: 8px; margin: 4px 0 8px 0; border-radius: 4px; border: 1px solid #30363d; background: #0d1117; color: white; box-sizing: border-box; }
         .escudo { width: 80px; margin: 5px 0; }
-        .item-lista { padding: 6px; border-bottom: 1px solid #333; display: flex; align-items: center; font-size: 14px; }
+        .item-lista { padding: 6px; border-bottom: 1px solid #333; display: flex; align-items: center; }
         .item-lista img { width: 25px; border-radius: 50%; margin-right: 10px; border: 1px solid #238636; }
-        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 8px; text-align: center; border-top: 1px solid #333; padding-top: 8px; font-size: 14px; }
-        h1 { font-size: 1.5em; margin: 5px 0; }
-        label { font-size: 11px; color: #f1e05a; text-transform: uppercase; }
+        .cronometro { color: #f1e05a; font-weight: bold; display: block; margin-top: 8px; text-align: center; border-top: 1px solid #333; padding-top: 8px; }
+        label { font-size: 11px; color: #f1e05a; text-transform: uppercase; font-weight: bold; }
     </style>
 </head>
 <body>
 
     <img src="escudo.png" class="escudo">
-    <h1>BEIRA RIO FC</h1>
-
-    <div id="painel_admin" class="admin-box">
-        <label>Jogo:</label>
-        <input type="text" id="edit_adv" placeholder="Adversário">
-        <div style="display:flex; gap:5px;"><input type="date" id="edit_data"><input type="time" id="edit_hora"></div>
-        <input type="text" id="edit_local" placeholder="Local">
-        <input type="text" id="edit_aviso" placeholder="Aviso Mural">
-        <button class="btn" style="background:#0077b6; padding: 8px;" onclick="salvarInfo()">SALVAR JOGO</button>
-        
-        <label style="display:block; margin-top:10px;">Gols:</label>
-        <div style="display:flex; gap:5px;"><input type="text" id="art_nome" placeholder="Nome"><input type="number" id="art_gols" placeholder="Gols"></div>
-        <button class="btn" style="background:#8957e5; padding: 8px;" onclick="adicionarGol()">REGISTRAR GOL</button>
-        
-        <div style="display:flex; gap:5px; margin-top:10px;">
-            <button class="btn" style="background:#da3633; padding: 8px; font-size:10px;" onclick="zerarLista()">ZERAR LISTA</button>
-            <button class="btn" style="background:#da3633; padding: 8px; font-size:10px;" onclick="zerarArtilharia()">ZERAR GOLS</button>
-        </div>
-    </div>
-
-    <div class="card" style="border-left: 4px solid #58a6ff;">
-        <h3 style="margin:0; color:#58a6ff; font-size: 14px;">🗓️ PRÓXIMO JOGO</h3>
-        <p style="margin: 8px 0; font-weight: bold;">Beira Rio vs <span id="display_adv">...</span></p>
-        <p style="font-size: 13px; margin: 4px 0;">📅 <span id="display_data_hora">---</span></p>
-        <p style="font-size: 13px; margin: 4px 0;">📍 <span id="display_local">---</span></p>
-        <span id="tempo" class="cronometro">CARREGANDO...</span>
-    </div>
-
-    <button class="btn" onclick="confirmarPresenca()">⚽ CONFIRMAR MINHA PRESENÇA</button>
-
-    <div class="card">
-        <h3 style="margin:0 0 10px 0; color:#f1e05a; font-size: 14px;">🏆 ARTILHARIA</h3>
-        <div id="lista_artilharia"></div>
-    </div>
-
-    <div class="card">
-        <h3 style="margin:0 0 10px 0; font-size: 14px;">📋 CONFIRMADOS: <span id="total" style="color:#238636;">0</span></h3>
-        <div id="lista"></div>
-    </div>
-
-    <div class="card" style="border-left: 4px solid #f85149;">
-        <h3 style="margin:0; color:#f85149; font-size: 14px;">📢 MURAL</h3>
-        <p id="display_mural" style="font-style:italic; margin-top:8px; font-size: 13px;">Sem avisos.</p>
-    </div>
-
-</body>
-</html>
+    <h1>BEIRA RIO
